@@ -1,50 +1,24 @@
 ---
-title: Configuration
+title: Configuration (Deferred)
 ---
 
-# GET /api/config
+# Configuration (Deferred)
 
-Returns the current active configuration (read-only).
+The canonical configuration resource is intentionally deferred. This draft
+does not currently define `GET /api/config` or `PATCH /api/config` because a
+shared shape must preserve each engine's configuration semantics without
+exposing credentials or pretending one engine's file format is universal.
 
-## Request
+The current native contract exposes only configuration-adjacent state:
 
-```http
-GET /api/config HTTP/1.1
-Host: localhost:9527
-```
+- `GET /api/runtime` identifies the active generation and configuration
+  revision.
+- `PATCH /api/groups/{groupId}` changes only fields explicitly listed by that
+  group's capabilities.
+- `POST /api/operations/reload` asks the engine to load its engine-owned
+  configuration.
 
-## Response
-
-### Success (200 OK)
-
-```json
-{
-  "api": {
-    "port": 9527
-  },
-  "global": {
-    "log_level": "info"
-  },
-  "groups": [
-    {
-      "name": "proxy",
-      "policy": "random"
-    }
-  ],
-  "routing": {
-    "rules": []
-  }
-}
-```
-
-### Fields
-
-The response mirrors the dae configuration file structure. See [dae documentation](https://dae.universe.ingress/) for full field details.
-
-> **Note:** This endpoint returns a sanitized view of the configuration. Sensitive fields like `api.token` are not included in the response.
-
-## Example
-
-```bash
-curl http://localhost:9527/api/config
-```
+Until a neutral resource is designed, implementations must not advertise a
+native configuration resource in `GET /api/capabilities`. Existing
+engine-specific or Clash-compatible configuration endpoints remain outside
+this native contract.

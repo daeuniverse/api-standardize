@@ -1,18 +1,28 @@
-# dae API - Cackle Theme Configuration
-
 # 侧边栏导航
 menu:
   - title: Overview
     file: index
+  - title: Discovery
+    file: docs/discovery
   - title: Version
     file: docs/version
+  - title: Capabilities
+    file: docs/capabilities
   - title: API Configuration
     file: docs/api-config
-  - title: Runtime Status
+  - title: Errors
+    file: docs/errors
+  - title: Operations
+    file: docs/operations
+  - title: Runtime
     file: docs/runtime-status
-  - title: Node Latency
+  - title: Runtime Memory
+    file: docs/runtime-memory
+  - title: Datapath
+    file: docs/datapath
+  - title: Nodes
     file: docs/node-latency
-  - title: Check Nodes
+  - title: Probes
     file: docs/check-nodes
   - title: Groups
     file: docs/groups
@@ -22,7 +32,7 @@ menu:
     file: docs/dns-query
   - title: DNS Cache
     file: docs/dns-cache
-  - title: Configuration
+  - title: Configuration (Deferred)
     file: docs/configuration
   - title: Reload
     file: docs/reload
@@ -49,7 +59,7 @@ language_negotiation:
 # 品牌标识
 brand:
   logo: i-menu-book
-  text: dae API
+  text: dae/honk API
   favicon: /images/favicon.svg
 
 # 首页内容
@@ -58,23 +68,23 @@ home:
     - hero
     - features
     - versions
-  hero_badge: dae API
-  hero_title: dae API Documentation
-  hero_subtitle: REST API for dae transparent proxy
+  hero_badge: dae/honk API
+  hero_title: dae/honk Native API
+  hero_subtitle: Capability-driven API for Linux eBPF proxy engines
   hero_cta: Get Started
   versions_title: Versions
   versions_subtitle: Documentation versions
   features:
     - icon: i-history
-      title: Runtime Statistics
-      desc: Monitor real-time runtime statistics
+      title: Native API
+      desc: Draft resources, operations, errors, and compatibility rules
     - icon: i-light-mode
-      title: Node Latency
-      desc: Check latency of each node
+      title: Datapath Semantics
+      desc: Keep direct, proxy, DNS, and visibility semantics explicit
     - icon: i-search
       title: DNS Cache
-      desc: Query and manage DNS cache
+      desc: Inspect, flush, and delete cache entries when the engine exposes it
 
 # 底部信息
 footer:
-  text: dae © 2026 · Built with Hexo
+  text: dae/honk © 2026 · Built with Hexo

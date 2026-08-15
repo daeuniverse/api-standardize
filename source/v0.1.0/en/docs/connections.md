@@ -4,12 +4,17 @@ title: Connections
 
 # GET /api/connections
 
-Returns a list of active TCP and UDP connections, including real-time per-connection network speeds.
+> Draft endpoint. Real-direct flows can bypass userspace, so this list is not
+> necessarily a complete packet-flow inventory. Native responses label
+> `observed_by` and use `null` when a counter is unavailable.
+
+Returns a list of visible TCP and UDP connections, including per-connection
+network speeds where the observation plane provides them.
 
 ## Request
 
 ```http
-GET /api/connections HTTP/1.1
+GET /api/connections?detail=full HTTP/1.1
 Host: localhost:9527
 ```
 
@@ -18,7 +23,8 @@ Host: localhost:9527
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | type | string | all | Filter: `tcp`, `udp`, or `all` |
-| limit | int | 100 | Max connections to return |
+| limit | int | 100 | Max connections to return across both arrays; capped at 1000. |
+| detail | string | summary | `summary` omits `src`, `dst`, and `domain`; `full` includes them when observable. |
 
 ## Response
 
@@ -26,32 +32,37 @@ Host: localhost:9527
 
 ```json
 {
+  "observed_at": "2026-08-15T10:00:00Z",
+  "visibility": "partial",
+  "truncated": false,
   "tcp": [
     {
-      "id": 1,
+      "id": "tcp-01HZX4K8W5",
       "src": "192.168.1.100:12345",
       "dst": "1.2.3.4:443",
       "domain": "example.com",
       "outbound": "proxy",
-      "started": "2026-08-13T12:00:00Z",
+      "started_at": "2026-08-13T12:00:00Z",
+      "observed_by": "userspace",
       "upload_bytes": 20480,
       "download_bytes": 1048576,
-      "upload_rate": 4096,
-      "download_rate": 32768
+      "upload_bytes_per_second": 4096,
+      "download_bytes_per_second": 32768
     }
   ],
   "udp": [
     {
-      "id": 2,
+      "id": "udp-01HZX4K8W6",
       "src": "192.168.1.100:5353",
       "dst": "8.8.8.8:53",
-      "domain": "dns.google",
+      "domain": null,
       "outbound": "direct",
-      "started": "2026-08-13T12:00:05Z",
-      "upload_bytes": 128,
-      "download_bytes": 512,
-      "upload_rate": 0,
-      "download_rate": 0
+      "started_at": "2026-08-13T12:00:05Z",
+      "observed_by": "ebpf",
+      "upload_bytes": null,
+      "download_bytes": null,
+      "upload_bytes_per_second": null,
+      "download_bytes_per_second": null
     }
   ],
   "total_tcp": 42,
@@ -63,6 +74,9 @@ Host: localhost:9527
 
 | Field | Type | Description |
 |-------|------|-------------|
+| observed_at | string | Snapshot timestamp (RFC3339). |
+| visibility | string | `full`, `partial`, or `none`. |
+| truncated | bool | Whether `limit` omitted visible entries. |
 | tcp | array | Active TCP connections |
 | udp | array | Active UDP sessions |
 | total_tcp | int | Total active TCP count |
@@ -72,21 +86,28 @@ Host: localhost:9527
 
 | Field | Type | Description |
 |-------|------|-------------|
-| id | uint64 | Connection identifier |
-| src | string | Source address (ip:port) |
-| dst | string | Destination address (ip:port) |
-| domain | string | Sniffed domain name (empty if unknown) |
+| id | string | Opaque connection identifier |
+| src | string, optional | Source address (ip:port), present with `detail=full` |
+| dst | string, optional | Destination address (ip:port), present with `detail=full` |
+| domain | string or null, optional | Sniffed domain with `detail=full`, or `null` when unknown |
 | outbound | string | Outbound group name |
-| started | string | Connection start time (RFC3339) |
-| upload_bytes | uint64 | Bytes uploaded by this connection |
-| download_bytes | uint64 | Bytes downloaded by this connection |
-| upload_rate | uint64 | Real-time upload speed (bytes/sec) |
-| download_rate | uint64 | Real-time download speed (bytes/sec) |
+| started_at | string or null | Connection start time (RFC3339) when known |
+| observed_by | string | `userspace`, `ebpf`, or `mixed` |
+| upload_bytes | uint64 or null | Visible uploaded bytes |
+| download_bytes | uint64 or null | Visible downloaded bytes |
+| upload_bytes_per_second | uint64 or null | Visible upload rate |
+| download_bytes_per_second | uint64 or null | Visible download rate |
 
-> **Note:** Overall real-time network speed and connection totals are available from [`GET /api/runtime/status`](runtime-status.md).
+> **Note:** Overall visible network speed and connection totals are available
+> from [`GET /api/runtime`](runtime-status.html). The datapath may observe only a
+> subset of host traffic.
+
+When both arrays exceed `limit`, the server returns the most recently observed
+entries first with a stable tie-breaker and sets `truncated: true`. Totals are
+the complete counts visible at `observed_at`, not only the returned array sizes.
 
 ## Example
 
 ```bash
-curl "http://localhost:9527/api/connections?type=tcp&limit=10"
+curl "http://localhost:9527/api/connections?type=tcp&limit=10&detail=full"
 ```

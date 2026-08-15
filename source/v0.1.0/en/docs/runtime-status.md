@@ -1,17 +1,28 @@
 ---
-title: Runtime Status
+title: Runtime
 ---
 
-# GET /api/runtime/status
+# GET /api/runtime
 
-Returns the current runtime status of the dae instance, including memory usage, connection statistics, and real-time network speed.
+> Draft endpoint. This read-only snapshot describes the running process, active
+> configuration generation, eBPF datapath summary, and traffic visible to the
+> engine. Detailed eBPF state is available from [`GET /api/datapath`](datapath.html),
+> and the independently pollable memory snapshot is available from
+> [`GET /api/runtime/memory`](runtime-memory.html).
+
+Runtime values are observations, not a promise that the engine can see every
+packet on the host. A value that is unsupported or not observable is `null`;
+zero remains a valid measured value.
 
 ## Request
 
 ```http
-GET /api/runtime/status HTTP/1.1
+GET /api/runtime?detail=full HTTP/1.1
 Host: localhost:9527
 ```
+
+`detail=summary` is the default and omits `process.pid`. `detail=full` includes
+it when the adapter can observe it.
 
 ## Response
 
@@ -19,39 +30,63 @@ Host: localhost:9527
 
 ```json
 {
-  "time": "2026-08-14T00:00:00Z",
-  "uptime_seconds": 86400,
-  "goroutines": 42,
-  "memory": {
-    "alloc_bytes": 33554432,
-    "total_alloc_bytes": 134217728,
-    "sys_bytes": 67108864,
-    "heap_alloc_bytes": 33554432,
-    "heap_sys_bytes": 41943040,
-    "heap_inuse_bytes": 33554432,
-    "stack_inuse_bytes": 1048576,
-    "num_gc": 321,
-    "last_gc_time": "2026-08-14T00:00:00Z"
+  "observed_at": "2026-08-15T10:00:00Z",
+  "lifecycle": {
+    "state": "running",
+    "started_at": "2026-08-15T08:00:00Z",
+    "uptime_seconds": 7200
   },
-  "connections": {
-    "active": {
+  "generation": {
+    "active_id": "generation-42",
+    "config_revision": "17",
+    "state": "active",
+    "activated_at": "2026-08-15T09:30:00Z"
+  },
+  "datapath": {
+    "kind": "ebpf",
+    "state": "active",
+    "visibility": "partial",
+    "ebpf": {
+      "backend": "real",
+      "programs": "loaded",
+      "hooks": "attached",
+      "routing": {
+        "state": "published",
+        "generation_id": "generation-42"
+      },
+      "health": "healthy",
+      "last_error": null,
+      "checked_at": "2026-08-15T10:00:00Z"
+    }
+  },
+  "traffic": {
+    "scope": "visible",
+    "observed_by": "mixed",
+    "counter_since": "2026-08-15T08:00:00Z",
+    "connections": {
       "tcp": 42,
       "udp": 128,
       "total": 170
     },
-    "total": {
-      "tcp": 1337,
-      "udp": 4096,
-      "grand_total": 5433
+    "bytes": {
+      "upload": 123456789,
+      "download": 987654321
+    },
+    "rates": {
+      "window_seconds": 1,
+      "upload_bytes_per_second": 4096,
+      "download_bytes_per_second": 32768
     }
   },
-  "rates": {
-    "upload_rate": 102400,
-    "download_rate": 512000
+  "process": {
+    "pid": 1234,
+    "cpu_percent": null
   },
-  "traffic": {
-    "upload_bytes": 123456789,
-    "download_bytes": 987654321
+  "last_reload": {
+    "operation_id": "op-01HZX4K8W7",
+    "status": "succeeded",
+    "finished_at": "2026-08-15T09:30:00Z",
+    "error": null
   }
 }
 ```
@@ -60,34 +95,56 @@ Host: localhost:9527
 
 | Field | Type | Description |
 |-------|------|-------------|
-| time | string | Snapshot timestamp (RFC3339) |
-| uptime_seconds | uint64 | Seconds since dae started |
-| goroutines | int | Number of running goroutines |
-| memory | object | Memory usage statistics |
-| memory.alloc_bytes | uint64 | Bytes of allocated heap objects |
-| memory.total_alloc_bytes | uint64 | Cumulative bytes allocated since start |
-| memory.sys_bytes | uint64 | Total bytes obtained from the OS |
-| memory.heap_alloc_bytes | uint64 | Bytes of currently live heap objects |
-| memory.heap_sys_bytes | uint64 | Bytes of heap memory obtained from the OS |
-| memory.heap_inuse_bytes | uint64 | Bytes of in-use heap spans |
-| memory.stack_inuse_bytes | uint64 | Bytes of in-use stack memory |
-| memory.num_gc | uint64 | Number of completed garbage collection cycles |
-| memory.last_gc_time | string | Time of the last GC cycle (RFC3339) |
-| connections.active.tcp | uint32 | Currently active TCP connections |
-| connections.active.udp | uint32 | Currently active UDP sessions |
-| connections.active.total | uint32 | Total active connections (TCP + UDP) |
-| connections.total.tcp | uint64 | Total TCP connections since dae started |
-| connections.total.udp | uint64 | Total UDP sessions since dae started |
-| connections.total.grand_total | uint64 | Total connections (TCP + UDP) since dae started |
-| rates.upload_rate | uint64 | Current upload speed (bytes/sec) |
-| rates.download_rate | uint64 | Current download speed (bytes/sec) |
-| traffic.upload_bytes | uint64 | Total bytes uploaded |
-| traffic.download_bytes | uint64 | Total bytes downloaded |
+| observed_at | string | Snapshot timestamp (RFC3339). |
+| lifecycle.state | string | `starting`, `running`, `reloading`, `suspended`, `draining`, `degraded`, or `failed`. |
+| lifecycle.started_at | string | Process start time, when known. |
+| lifecycle.uptime_seconds | uint64 or null | Process uptime. |
+| generation.active_id | string | Opaque active runtime generation. |
+| generation.config_revision | string or null | Configuration revision used by the active generation. |
+| generation.state | string | `active` or `reloading`. A pending generation is not active. |
+| datapath.kind | string | `ebpf`, `userspace`, `mock`, or `unknown`. |
+| datapath.state | string | `active`, `degraded`, `detached`, `failed`, `disabled`, or `unknown`. |
+| datapath.visibility | string | `full`, `partial`, or `none` for traffic visible to the datapath. |
+| datapath.ebpf | object or null | eBPF state summary when the datapath uses eBPF. |
+| traffic.scope | string | Scope of the counters, normally `visible`. |
+| traffic.observed_by | string | `userspace`, `ebpf`, or `mixed`. |
+| traffic.counter_since | string or null | Start time of the reported cumulative counters. |
+| traffic.connections | object | Currently visible TCP and UDP connections or sessions. |
+| traffic.bytes | object | Cumulative visible bytes. |
+| traffic.rates | object or null | Current rates. `null` when the engine cannot provide them. |
+| process.pid | uint32 or null, optional | Engine process ID with `detail=full`. |
+| process.cpu_percent | number or null | Process CPU usage when available. |
+| last_reload | object or null | Most recent reload operation and its result. |
 
-> **Note:** Per-connection real-time network speeds are available from [`GET /api/connections`](connections.md).
+The `datapath.ebpf` summary uses these states:
+
+| Field | Values | Meaning |
+|-------|--------|---------|
+| backend | `real`, `mock`, `unknown` | Backend used by the engine. |
+| programs | `loaded`, `not_loaded`, `error`, `unknown` | Whether eBPF programs are loaded. |
+| hooks | `attached`, `partially_attached`, `detached`, `unknown` | Whether required hooks are mounted. |
+| routing.state | `published`, `not_published`, `error`, `unknown` | Whether routing is visible to eBPF. |
+| routing.generation_id | string or null | Generation currently published to eBPF. |
+| health | `healthy`, `degraded`, `failed`, `unknown` | Combined operational result. |
+
+`datapath.state` may be `active` only when the required programs, hooks, and
+active routing publication are all valid. A loaded program alone is not an
+active datapath.
+
+> **Note:** Per-connection details and byte counters are available from
+> [`GET /api/connections`](connections.html). They carry the same visibility limits.
+
+Memory metrics are intentionally excluded from this snapshot so a dashboard
+can poll [`GET /api/runtime/memory`](runtime-memory.html) without repeatedly fetching
+generation, datapath, traffic, and reload state.
+
+During reload, the old active generation remains reported until the new
+generation has passed configuration validation and datapath publication. A
+failed reload therefore leaves `generation.active_id` unchanged and is exposed
+through `last_reload`.
 
 ## Example
 
 ```bash
-curl http://localhost:9527/api/runtime/status
+curl "http://localhost:9527/api/runtime?detail=full"
 ```
