@@ -14,6 +14,7 @@ dae is a high-performance transparent proxy based on Linux eBPF. The API allows 
 - Report runtime status including memory usage and connection totals
 - Query node latency and health status
 - View active connections with per-connection network speeds
+- Trace routing decisions for a hypothetical flow
 - Debug DNS resolution
 - Reload configuration
 - Suspend/resume the proxy
@@ -64,6 +65,7 @@ Current version: **v0.1.0**
 | GET | `/api/dns/query` | Debug DNS domain queries |
 | GET | `/api/dns/cache` | DNS cache |
 | GET | `/api/connections` | Active connections with per-connection speeds |
+| GET | `/api/routing/trace` | Dry-run routing decisions for a hypothetical flow |
 | GET | `/api/nodes/latency` | Node latency |
 | POST | `/api/nodes/check` | Trigger latency checks |
 | GET | `/api/groups` | Node groups |
