@@ -42,6 +42,8 @@ menu:
     file: docs/dns-query
   - title: DNS Cache
     file: docs/dns-cache
+  - title: DNS Rules
+    file: docs/dns-rules
   - title: Configuration (Deferred)
     file: docs/configuration
   - title: Reload

@@ -1519,6 +1519,63 @@ test("rule schemas require generation, typed source locations and one fallback",
   assertInvalid(validateExample(contract, response), "missing fallback passed");
 });
 
+test("DNS rules list request and response rules, each ending in one fallback", () => {
+  const item = spec.paths["/api/v1/dns/rules"];
+  assert.deepEqual(Object.keys(item), ["get"]);
+  assert.equal(item.get["x-permission"], "observe");
+  for (const status of Object.keys(item.get.responses)) {
+    const responses = [...contract.examples.values()].filter((value) =>
+      value.operationId === "listDnsRules" && String(value.status) === status);
+    assert.ok(responses.length > 0, `/api/v1/dns/rules:${status} has no response example`);
+    for (const response of responses) assertValid(validateExample(contract, response));
+  }
+
+  const listed = example("listDnsRules:200:running").body;
+  const capabilities = example("getCapabilities:200:available").body.resources;
+  const ids = [...listed.request, ...listed.response].map((rule) => rule.rule_id);
+  assert.equal(new Set(ids).size, ids.length);
+  for (const list of [listed.request, listed.response]) {
+    assert.equal(new Set(list.map((rule) => rule.rule_id)).size, list.length);
+    assert.deepEqual(list.map((rule) => rule.index), list.map((_, index) => index));
+    assert.equal(list.at(-1).kind, "fallback");
+    assert.ok(list.length <= capabilities.dns_rules.max_rules);
+  }
+
+  for (const [list, field, invalid] of [
+    ["request", "action", "accept"],
+    ["request", "action", "requery"],
+    ["response", "action", "asis"],
+    ["response", "action", "upstream"],
+    ["request", "kind", "policy"],
+    ["request", "index", -1],
+  ]) {
+    const changed = example("listDnsRules:200:running");
+    changed.body[list][0][field] = invalid;
+    assertInvalid(validateExample(contract, changed), `${list} ${field} accepted ${JSON.stringify(invalid)}`);
+  }
+  const response = example("listDnsRules:200:running");
+  response.body.request[0].upstream = null;
+  assertInvalid(validateExample(contract, response), "upstream action passed without an upstream");
+  response.body.request[0].upstream = "alidns";
+  response.body.request[1].upstream = "alidns";
+  assertInvalid(validateExample(contract, response), "reject passed with an upstream");
+  response.body.request[1].upstream = null;
+  response.body.request[0].source = null;
+  assertValid(validateExample(contract, response));
+  response.body.response[0].kind = "fallback";
+  assertInvalid(validateExample(contract, response), "multiple fallback entries passed");
+  response.body.response = response.body.response.filter((rule) => rule.kind !== "fallback");
+  assertInvalid(validateExample(contract, response), "missing fallback passed");
+
+  const advertised = example("getCapabilities:200:available");
+  delete advertised.body.resources.dns_rules.max_rules;
+  assertInvalid(validateExample(contract, advertised), "dns_rules.max_rules was optional");
+  advertised.body.resources.dns_rules = { available: false };
+  assertValid(validateExample(contract, advertised));
+  delete advertised.body.resources.dns_rules;
+  assertInvalid(validateExample(contract, advertised), "dns_rules declaration was optional");
+});
+
 test("DNS cache entries can name the root zone", () => {
   const page = example("listDnsCache:200:entries");
   page.body.entries[0].domain = ".";

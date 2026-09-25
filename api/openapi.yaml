@@ -92,6 +92,8 @@ paths:
     $ref: ./dns.yaml#/paths/~1api~1v1~1dns~1cache~1{entry_id}
   /api/v1/dns/cache/flush:
     $ref: ./dns.yaml#/paths/~1api~1v1~1dns~1cache~1flush
+  /api/v1/dns/rules:
+    $ref: ./dns.yaml#/paths/~1api~1v1~1dns~1rules
   /api/v1/operations/reload:
     $ref: ./operations-probes.yaml#/paths/~1api~1v1~1operations~1reload
   /api/v1/operations/suspend:
@@ -532,6 +534,10 @@ components:
       $ref: ./dns.yaml#/schemas/DnsLogRecord
     DnsLogList:
       $ref: ./dns.yaml#/schemas/DnsLogList
+    DnsRoutingRule:
+      $ref: ./dns.yaml#/schemas/DnsRoutingRule
+    DnsRuleList:
+      $ref: ./dns.yaml#/schemas/DnsRuleList
     DeleteCount:
       $ref: ./dns.yaml#/schemas/DeleteCount
     DeleteMatchingCount:

@@ -461,6 +461,153 @@ paths:
           $ref: ./openapi.yaml#/components/responses/NotFound
         "503":
           $ref: ./openapi.yaml#/components/responses/Unavailable
+  /api/v1/dns/rules:
+    get:
+      operationId: listDnsRules
+      summary: Read the running generation's DNS routing rules
+      description: |
+        Requires resources.dns_rules.available. Return the DNS routing rules of the
+        running generation, which is the accepted configuration, as two ordered lists:
+        request rules pick how a query is resolved, and response rules decide whether
+        an answer is accepted, rejected or re-queried. Each list is in evaluation order
+        and ends with exactly one fallback entry. A fallback the configuration does not
+        write still appears, with the backend's default action and a null source.
+        A rule the configuration parser omitted with a diagnostic is not listed.
+        This resource is read-only. Rules are edited by replacing the source that holds
+        them with PUT /api/v1/config/sources/{source_id}, the same as traffic rules;
+        there is no rule-level write endpoint. rule_id is stable within a generation
+        and addresses the rule; it is unique across both lists. expression is the
+        source text as written; upstream is the name as the engine resolved it and may
+        differ in case from the source text. generation_id identifies the rules'
+        routing generation; refetch after generation.changed. There is no paginated snapshot. If a coherent
+        generation cannot be pinned, return 503 snapshot_unavailable. If either list
+        exceeds resources.dns_rules.max_rules, return 503 temporarily_unavailable
+        rather than silently truncate it.
+      x-permission: observe
+      security:
+        - bearerAuth: []
+        - {}
+      responses:
+        "200":
+          description: Ordered request and response rules, each with its fallback, from one running generation
+          headers:
+            Cache-Control:
+              $ref: ./openapi.yaml#/components/headers/NoStore
+            X-Content-Type-Options:
+              $ref: ./openapi.yaml#/components/headers/NoSniff
+          content:
+            application/json:
+              schema:
+                $ref: ./openapi.yaml#/components/schemas/DnsRuleList
+              examples:
+                running:
+                  value:
+                    generation_id: generation-42
+                    request:
+                      - rule_id: dns_request:0
+                        index: 0
+                        expression: qname(geosite:cn) -> alidns
+                        action: upstream
+                        upstream: alidns
+                        source:
+                          file: "[redacted]/config.dae"
+                          source_id: source-main
+                          line: 40
+                          column: 7
+                        kind: rule
+                      - rule_id: dns_request:1
+                        index: 1
+                        expression: qtype(aaaa) -> reject
+                        action: reject
+                        upstream: null
+                        source:
+                          file: "[redacted]/config.dae"
+                          source_id: source-main
+                          line: 41
+                          column: 7
+                        kind: rule
+                      - rule_id: dns_request:2
+                        index: 2
+                        expression: "fallback: googledns"
+                        action: upstream
+                        upstream: googledns
+                        source:
+                          file: "[redacted]/config.dae"
+                          source_id: source-main
+                          line: 42
+                          column: 7
+                        kind: fallback
+                    response:
+                      - rule_id: dns_response:0
+                        index: 0
+                        expression: upstream(googledns) && ip(geoip:private) -> alidns
+                        action: requery
+                        upstream: alidns
+                        source:
+                          file: "[redacted]/config.dae"
+                          source_id: source-main
+                          line: 45
+                          column: 7
+                        kind: rule
+                      - rule_id: dns_response:1
+                        index: 1
+                        expression: "fallback: accept"
+                        action: accept
+                        upstream: null
+                        source: null
+                        kind: fallback
+                  x-headers:
+                    Content-Type: application/json
+                    Cache-Control: no-store
+                    X-Content-Type-Options: nosniff
+        "401":
+          $ref: ./openapi.yaml#/components/responses/Unauthorized
+        "403":
+          $ref: ./openapi.yaml#/components/responses/Forbidden
+        "404":
+          $ref: ./openapi.yaml#/components/responses/NotFound
+        "503":
+          description: A list exceeds max_rules (temporarily_unavailable), or a coherent generation could not be pinned (snapshot_unavailable)
+          headers:
+            Retry-After:
+              description: Retry delay in seconds.
+              required: true
+              schema:
+                type: integer
+                minimum: 1
+            Cache-Control:
+              $ref: ./openapi.yaml#/components/headers/NoStore
+            X-Content-Type-Options:
+              $ref: ./openapi.yaml#/components/headers/NoSniff
+          content:
+            application/json:
+              schema:
+                $ref: ./openapi.yaml#/components/schemas/ErrorResponse
+              examples:
+                temporarily_unavailable:
+                  value:
+                    error:
+                      code: temporarily_unavailable
+                      message: A DNS rule list exceeds resources.dns_rules.max_rules.
+                      details: null
+                    request_id: request-01HZX4K8W6
+                  x-headers:
+                    Content-Type: application/json
+                    Retry-After: 1
+                    Cache-Control: no-store
+                    X-Content-Type-Options: nosniff
+                snapshot_unavailable:
+                  value:
+                    error:
+                      code: snapshot_unavailable
+                      message: A coherent routing generation is unavailable; retry the read.
+                      details: null
+                    request_id: request-01HZX4K8W6
+                  x-headers:
+                    Content-Type: application/json
+                    Retry-After: 1
+                    Cache-Control: no-store
+                    X-Content-Type-Options: nosniff
 schemas:
   DnsQueryLimits:
     type: object
@@ -682,6 +829,94 @@ schemas:
         type: array
         items:
           $ref: ./openapi.yaml#/components/schemas/DnsLogRecord
+  DnsRoutingRule:
+    type: object
+    required: [ rule_id, index, expression, action, upstream, source, kind ]
+    properties:
+      rule_id:
+        type: string
+        minLength: 1
+        description: Stable within the generation and unique across both lists; addresses the rule. Opaque to clients.
+      index:
+        $ref: ./openapi.yaml#/components/schemas/SafeUInt
+        description: Zero-based evaluation order within its list and generation, not a cross-generation identity.
+      expression:
+        type: string
+        minLength: 1
+        description: The rule's source text as written, for display; not an editable source representation.
+      action:
+        type: string
+        enum: [ upstream, asis, reject, accept, requery ]
+        description: |
+          Request rules: upstream sends the query to the named upstream, asis sends it
+          to the original destination, reject answers it empty. Response rules: accept
+          keeps the answer, reject replaces it with an empty one, requery resolves the
+          query again through the named upstream.
+      upstream:
+        type: [ string, "null" ]
+        minLength: 1
+        description: Upstream name for upstream and requery, as the engine resolved it; it may differ in case from the source text. Null for other actions.
+      source:
+        $ref: ./openapi.yaml#/components/schemas/RuleSource
+      kind:
+        type: string
+        enum: [ rule, fallback ]
+    if:
+      required: [ action ]
+      properties:
+        action:
+          enum: [ upstream, requery ]
+    then:
+      properties:
+        upstream:
+          type: string
+    else:
+      properties:
+        upstream:
+          type: "null"
+  DnsRuleList:
+    type: object
+    required: [ generation_id, request, response ]
+    properties:
+      generation_id:
+        type: string
+        minLength: 1
+      request:
+        type: array
+        minItems: 1
+        items:
+          allOf:
+            - $ref: ./openapi.yaml#/components/schemas/DnsRoutingRule
+            - properties:
+                action:
+                  enum: [ upstream, asis, reject ]
+        contains:
+          type: object
+          required: [ kind ]
+          properties:
+            kind:
+              const: fallback
+        minContains: 1
+        maxContains: 1
+        description: Request rules in evaluation order with unique rule_id and index values, ending with exactly one fallback entry.
+      response:
+        type: array
+        minItems: 1
+        items:
+          allOf:
+            - $ref: ./openapi.yaml#/components/schemas/DnsRoutingRule
+            - properties:
+                action:
+                  enum: [ accept, reject, requery ]
+        contains:
+          type: object
+          required: [ kind ]
+          properties:
+            kind:
+              const: fallback
+        minContains: 1
+        maxContains: 1
+        description: Response rules in evaluation order with unique rule_id and index values, ending with exactly one fallback entry.
   DeleteCount:
     type: object
     required: [ deleted ]

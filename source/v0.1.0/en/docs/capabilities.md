@@ -79,6 +79,10 @@ when true, `fields` lists which settings the PATCH accepts on this backend.
 `dns_log.available` declares the ring of recent client resolutions; when
 true, `max_records` and `max_page_size` are required positive safe integers.
 
+`dns_rules.available` declares `GET /api/v1/dns/rules`; when true, `max_rules`
+bounds each of its two lists, including the fallback entry. See
+[DNS Rules](dns-rules.html).
+
 ## Configuration capabilities
 
 `resources.config.available` gates accepted-source readback. When available, it

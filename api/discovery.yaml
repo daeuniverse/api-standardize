@@ -270,6 +270,9 @@ paths:
                         available: true
                         max_records: 2048
                         max_page_size: 500
+                      dns_rules:
+                        available: true
+                        max_rules: 4096
                       runtime_settings:
                         available: true
                         fields: [ log.level, log.buffered_records, dns_log.max_records, flows.max_flows, flows.retention_seconds, geodata ]
@@ -486,7 +489,7 @@ schemas:
             minimum: 1
       resources:
         type: object
-        required: [ config, config_validate, runtime, runtime_memory, runtime_outbounds, traffic_history, memory_history, datapath, nodes, providers, groups, probes, connections, flows, routing_trace, rules, events, logs, dns_query, dns_cache, dns_log, runtime_settings, operations, reload, suspend, resume, geodata ]
+        required: [ config, config_validate, runtime, runtime_memory, runtime_outbounds, traffic_history, memory_history, datapath, nodes, providers, groups, probes, connections, flows, routing_trace, rules, events, logs, dns_query, dns_cache, dns_log, dns_rules, runtime_settings, operations, reload, suspend, resume, geodata ]
         properties:
           config:
             type: object
@@ -966,6 +969,22 @@ schemas:
               max_page_size:
                 $ref: ./openapi.yaml#/components/schemas/SafeUInt
                 minimum: 1
+          dns_rules:
+            type: object
+            required: [ available ]
+            if:
+              properties:
+                available:
+                  const: true
+            then:
+              required: [ max_rules ]
+            properties:
+              available:
+                type: boolean
+              max_rules:
+                $ref: ./openapi.yaml#/components/schemas/SafeUInt
+                minimum: 1
+                description: Maximum size of each DNS rule list, including its fallback entry; never a truncation limit.
           runtime_settings:
             type: object
             required: [ available ]
