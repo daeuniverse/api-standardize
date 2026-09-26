@@ -28,6 +28,8 @@ paths:
     $ref: ./config.yaml#/paths/~1api~1v1~1config
   /api/v1/config/validate:
     $ref: ./config.yaml#/paths/~1api~1v1~1config~1validate
+  /api/v1/config/sources:
+    $ref: ./config.yaml#/paths/~1api~1v1~1config~1sources
   /api/v1/config/sources/{source_id}:
     $ref: ./config.yaml#/paths/~1api~1v1~1config~1sources~1{source_id}
   /api/v1/runtime:
@@ -218,6 +220,8 @@ components:
       $ref: ./config.yaml#/schemas/EffectiveConfig
     ConfigSource:
       $ref: ./config.yaml#/schemas/ConfigSource
+    ConfigSourceCreate:
+      $ref: ./config.yaml#/schemas/ConfigSourceCreate
     ConfigDiagnostic:
       $ref: ./common.yaml#/schemas/ConfigDiagnostic
     ConfigDiagnosticSpan:

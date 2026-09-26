@@ -155,6 +155,7 @@ paths:
                         available: true
                         content: false
                         writable: true
+                        create: true
                         max_bytes: 65536
                         max_sources: 32
                       config_validate:
@@ -497,6 +498,13 @@ schemas:
                   const: true
             then:
               required: [ content, writable, max_bytes, max_sources ]
+            not:
+              required: [ create, writable ]
+              properties:
+                create:
+                  const: true
+                writable:
+                  const: false
             properties:
               available:
                 type: boolean
@@ -512,10 +520,17 @@ schemas:
                   validation and reload operations, including resources.reload.available
                   and resources.operations.available. Independent of content visibility
                   and the optional dry-run endpoint.
+              create:
+                type: boolean
+                default: false
+                description: |
+                  POST /config/sources is implemented: a control caller may add a new
+                  source file that an include pattern loads. False by default; true
+                  requires writable.
               max_bytes:
                 $ref: ./openapi.yaml#/components/schemas/SafeUInt
                 minimum: 1
-                description: Maximum UTF-8 bytes in replacement content; the shared JSON body ceiling applies independently.
+                description: Maximum UTF-8 bytes in replacement or new source content; the shared JSON body ceiling applies independently.
               max_sources:
                 $ref: ./openapi.yaml#/components/schemas/SafeUInt
                 minimum: 1

@@ -157,6 +157,71 @@ The PUT replacement hashes to
 Both include the final newline. After successful reload of that replacement,
 the source's accepted hash becomes the latter.
 
+## Creating a source
+
+`POST /api/v1/config/sources` adds one new dae file and reloads. It requires
+`control`, `resources.config.available`, `resources.config.writable`, and
+`resources.config.create`. `create` is false by default and is true only when
+`writable` is true. Without it, the request returns
+`404 capability_not_supported`.
+
+### Request
+
+{% api_example createConfigSource request include http %}
+
+| Field | Type | Description |
+|-------|------|-------------|
+| path | string | New file path relative to the main source's directory, in the same form as `ConfigSource.path`. |
+| content | string | Complete UTF-8 dae text; empty text is a validation candidate, not a malformed request. |
+
+`path` uses only normal segments: no leading `/`, no empty, `.`, or `..`
+segment. It ends in `.dae`, has at most 1024 UTF-8 bytes, and contains no
+control characters. The server resolves it inside the configuration root and
+returns `400 invalid_request` for a malformed path or one whose parent resolves
+outside the root, including through a symlink. A path that already names a file
+or an accepted source returns `409 state_conflict`; creation never overwrites.
+
+The same content limits as for [replacement](#Editing) apply, and so does the
+optional `Idempotency-Key`.
+
+### Validation and write
+
+The server validates the resulting source set in `full` mode, with the new file
+added at `path`, under the same dependency rules as a replacement. The file must
+be loaded by an include pattern of that source set, for example
+`include { config.d/*.dae }` in the main source for `config.d/proxies.dae`. If
+no pattern matches, validation reports a `source-not-included` error diagnostic
+on the main source. Any error diagnostic returns `422 unsupported_value` with
+`error.details.diagnostics`; the server creates no file and starts no reload.
+
+{% api_example createConfigSource 422 not_included %}
+
+Otherwise the server writes a temporary file in the target directory and renames
+it into place with a rename that fails if `path` exists, using the main
+source's file mode. It then starts a reload operation with `kind: reload`.
+
+{% api_example createConfigSource 202 queued http %}
+
+If the reload fails, the previous generation stays active and the server
+removes the file it created, unless the file at `path` is no longer the one it
+wrote. The failed operation's `error.details.written` is `false` when the file
+was removed and `true` when it remains on disk; reconcile a remaining file
+before retrying. After a successful reload, `GET /config` lists the new source
+with `path` as given, and it can be edited through
+`PUT /config/sources/{source_id}`.
+
+### Errors
+
+| Status and code | Meaning and action |
+|-----------------|--------------------|
+| `400 invalid_request` | Malformed body or path, or a path outside the configuration root. Correct the path. |
+| `403 permission_denied` | Missing `control`, disabled server-wide editing, or content that sets or changes API listener settings or secrets. |
+| `404 capability_not_supported` | Readback or source creation is unavailable. Do not offer creation. |
+| `409 state_conflict` | A file or accepted source already has this path; the server writes nothing. Edit that source instead or choose another path. |
+| `413 request_too_large` | Content exceeds `max_bytes` or the JSON body limit. |
+| `415 unsupported_media_type` | The body is not `application/json`. |
+| `422 unsupported_value` | Error diagnostics, including `source-not-included`; the server writes nothing and starts no reload. |
+
 ## POST /api/v1/config/validate
 
 Requires `control` and `capabilities.resources.config_validate.available` because

@@ -1568,3 +1568,34 @@ test("group tolerance is whole milliseconds", () => {
   operation.value = 0.5;
   assertInvalid(validateExample(contract, patch), "fractional tolerance patch passed");
 });
+
+test("config source creation takes a relative include path and needs writable", () => {
+  const capabilities = example("getCapabilities:200:available");
+  assert.equal(capabilities.body.resources.config.create, true);
+  capabilities.body.resources.config.writable = false;
+  assertInvalid(validateExample(contract, capabilities), "create passed without writable");
+  capabilities.body.resources.config.create = false;
+  assertValid(validateExample(contract, capabilities));
+
+  const request = example("createConfigSource:request:include");
+  for (const path of ["proxies.dae", "config.d/proxies.dae", "a b/c.d.dae", `${"a".repeat(1020)}.dae`]) {
+    request.body.path = path;
+    assertValid(validateExample(contract, request), path);
+  }
+  for (const path of [
+    "/etc/dae/proxies.dae",
+    "../proxies.dae",
+    "config.d/../proxies.dae",
+    "./proxies.dae",
+    "config.d//proxies.dae",
+    "config.d/proxies.txt",
+    "config.d/",
+    "config.d/pro\nxies.dae",
+    `${"a".repeat(1021)}.dae`,
+  ]) {
+    request.body.path = path;
+    assertInvalid(validateExample(contract, request), `${JSON.stringify(path)} passed`);
+  }
+  delete request.body.path;
+  assertInvalid(validateExample(contract, request), "missing path passed");
+});

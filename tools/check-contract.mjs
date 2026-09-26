@@ -45,7 +45,7 @@ export function checkContract(spec) {
     if (context.errors.length === 0 &&
         ((example.operationId === "getConfig" && example.status === 200) ||
          (example.operationId === "validateConfig" && (example.kind === "request" || example.status === 200)) ||
-         (example.operationId === "replaceConfigSource" && example.status === 422))) {
+         ((example.operationId === "replaceConfigSource" || example.operationId === "createConfigSource") && example.status === 422))) {
       for (const error of validateConfigExample(example)) errors.push(`${example.id}: ${error}`);
     }
     if (example.kind !== "response" || example.operationId !== "getFlow" || example.status !== 200) continue;

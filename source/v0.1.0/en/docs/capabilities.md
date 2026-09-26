@@ -91,6 +91,8 @@ complete source set; it does not permit truncation.
 
 Writing requires `control`, the server-wide switch, and a writable source.
 Advertising writes also requires full validation, reload, and operation support.
+`create`, false by default, advertises `POST /config/sources` for adding a new
+source file that an include pattern loads; it is true only when `writable` is.
 
 Paths are returned as the configuration references them, with `absolute_path`
 beside the relative `path`; only listener-secret values are masked, in paths,
