@@ -515,6 +515,7 @@ schemas:
           cpu_percent:
             type: [ number, "null" ]
             minimum: 0
+            description: CPU time the engine process used over the adapter's latest sampling interval, as a percentage of one CPU. 100 means one core fully busy; the value may exceed 100 on multi-core hosts. Null until two samples exist or when unmeasurable.
       last_reload:
         oneOf:
           - type: "null"

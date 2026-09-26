@@ -964,8 +964,10 @@ schemas:
         $ref: ./openapi.yaml#/components/schemas/NullableUInt64
       upload_bytes_per_second:
         $ref: ./openapi.yaml#/components/schemas/NullableUInt64
+        description: Visible upload rate, or null when the adapter does not sample per connection. See connections.md for deriving a rate from two list snapshots.
       download_bytes_per_second:
         $ref: ./openapi.yaml#/components/schemas/NullableUInt64
+        description: Visible download rate, or null when the adapter does not sample per connection. See connections.md for deriving a rate from two list snapshots.
   ConnectionList:
     type: object
     required: [ observed_at, instance_id, visibility, truncated, tcp, udp, total_tcp, total_udp ]

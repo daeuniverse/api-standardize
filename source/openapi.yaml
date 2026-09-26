@@ -7649,6 +7649,7 @@ components:
                 - number
                 - 'null'
               minimum: 0
+              description: CPU time the engine process used over the adapter's latest sampling interval, as a percentage of one CPU. 100 means one core fully busy; the value may exceed 100 on multi-core hosts. Null until two samples exist or when unmeasurable.
         last_reload:
           oneOf:
             - type: 'null'
@@ -9759,8 +9760,10 @@ components:
           $ref: '#/components/schemas/NullableUInt64'
         upload_bytes_per_second:
           $ref: '#/components/schemas/NullableUInt64'
+          description: Visible upload rate, or null when the adapter does not sample per connection. See connections.md for deriving a rate from two list snapshots.
         download_bytes_per_second:
           $ref: '#/components/schemas/NullableUInt64'
+          description: Visible download rate, or null when the adapter does not sample per connection. See connections.md for deriving a rate from two list snapshots.
     ConnectionList:
       type: object
       required:

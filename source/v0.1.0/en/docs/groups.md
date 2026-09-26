@@ -110,12 +110,19 @@ More operations than `resources.groups.max_patch_operations` returns
 update returns the new `ETag`; a rejected patch changes nothing.
 
 When `check_url` is mutable, it accepts only absolute `http` or `https` URLs
-without userinfo. Only default ports are allowed unless an administrator
-configures an explicit port allowlist. After resolution, loopback, link-local,
-multicast, unspecified, private, and cloud-metadata destinations are rejected
-unless present in an administrator-owned destination allowlist. The validated
-address is pinned for the connection. The adapter reapplies these checks after
-every redirect and enforces bounded redirects, response size, and timeout.
+without userinfo. An adapter that dials the check URL from its own host also
+applies these destination rules: only default ports are allowed unless an
+administrator configures an explicit port allowlist. After resolution,
+loopback, link-local, multicast, unspecified, private, and cloud-metadata
+destinations are rejected unless present in an administrator-owned destination
+allowlist. The validated address is pinned for the connection. The adapter
+reapplies these checks after every redirect and enforces bounded redirects,
+response size, and timeout.
+
+An adapter that dials check URLs through the group's member nodes instead
+applies the same validation to a patched `check_url` as to the value written
+through a [configuration source](configuration.html) update; the destination
+rules above do not apply to that path.
 
 ### Responses
 

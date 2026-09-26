@@ -59,12 +59,20 @@ network speeds where the observation plane provides them.
 | observed_by | string | `userspace`, `ebpf`, or `mixed` |
 | upload_bytes | decimal uint64 string or null | Visible uploaded bytes |
 | download_bytes | decimal uint64 string or null | Visible downloaded bytes |
-| upload_bytes_per_second | decimal uint64 string or null | Visible upload rate |
-| download_bytes_per_second | decimal uint64 string or null | Visible download rate |
+| upload_bytes_per_second | decimal uint64 string or null | Visible upload rate, or null when the adapter does not sample per connection |
+| download_bytes_per_second | decimal uint64 string or null | Visible download rate, or null when the adapter does not sample per connection |
 
 > **Note:** Visible network speed and connection totals are available
 > from [`GET /api/v1/runtime`](runtime-status.html). The datapath may observe only a
 > subset of host traffic.
+
+The per-connection rates are null when the adapter does not sample each
+connection. A client may then derive a rate from two list responses with the
+same top-level `instance_id` that both contain the same connection `id`:
+the change in `upload_bytes` or `download_bytes` divided by the change in the
+top-level `observed_at`. Skip the derivation when either byte value is null or
+the later value is smaller. The result is an average over the polling interval,
+and a connection seen only once has no derived rate.
 
 When the matching entries across both arrays exceed `limit`, the server
 returns the most recently observed entries first with a stable tie-breaker

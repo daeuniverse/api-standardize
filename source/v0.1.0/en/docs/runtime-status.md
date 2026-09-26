@@ -52,7 +52,7 @@ it when the adapter can observe it.
 | traffic.bytes | object | Cumulative visible bytes. Each value is a decimal uint64 string or `null` when unobservable. |
 | traffic.rates | object or null | Current rates. `null` when unavailable; `window_seconds` stays numeric and byte rates are decimal uint64 strings or `null`. |
 | process.pid | uint32 or null, optional | Engine process ID with `detail=full`. |
-| process.cpu_percent | number or null | Process CPU usage when available. |
+| process.cpu_percent | number or null | CPU time the engine process used over the adapter's latest sampling interval, as a percentage of one CPU. 100 means one core fully busy; the value may exceed 100 on multi-core hosts. Null until two samples exist or when unmeasurable. |
 | last_reload | object or null | Most recent reload operation and its result. |
 
 `traffic.rates.window_seconds` is the duration of the sampling interval
