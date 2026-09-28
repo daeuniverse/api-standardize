@@ -522,9 +522,7 @@ paths:
             The source's content_sha256, from GET /config or the ETag of
             GET /config/sources/{source_id}, enclosed in double quotes. The server
             compares it with the source's current bytes in the configuration store,
-            not the snapshot revision, as RFC 9110 §13.1.1 defines: `*` matches the
-            existing source, a list matches when any strong tag in it matches, and a
-            weak tag never matches.
+            not the snapshot revision, as [Conditional requests](/v0.1.0/en/docs/errors.html#Conditional-requests) defines.
         - $ref: ./openapi.yaml#/components/parameters/IdempotencyKey
       requestBody:
         required: true
@@ -622,7 +620,7 @@ paths:
         "409":
           $ref: ./openapi.yaml#/components/responses/Conflict
         "412":
-          description: If-Match does not match the stored content hash; nothing is stored
+          description: If-Match does not match the stored content hash, on arrival or at commit; the replacement is not stored
           headers:
             Cache-Control:
               $ref: ./openapi.yaml#/components/headers/NoStore

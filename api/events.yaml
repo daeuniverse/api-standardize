@@ -5,10 +5,8 @@ paths:
       tags: [ Events ]
       summary: Follow bounded resumable invalidation events
       description: |
-        Send stream.ready first on every connection, including a valid resume.
-        Its cursor must not skip pending replay; retain the supplied Last-Event-ID
-        until replay advances it. Filtered-out IDs may leave gaps, so clients must
-        not infer loss by subtracting IDs.
+        Every connection begins with stream.ready; a resumed connection then replays
+        retained events after Last-Event-ID; see [Replay and recovery](/v0.1.0/en/docs/events.html#Replay-and-recovery).
       x-permission: observe
       security:
         - bearerAuth: []

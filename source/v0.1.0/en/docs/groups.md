@@ -110,14 +110,17 @@ Updates group configuration only. It does not change runtime selection.
 
 Use RFC 6902 JSON Patch and send the `ETag` of `GET /groups/{group_id}/config`
 in `If-Match`, evaluated as [conditional requests](errors.html#Conditional-requests)
-defines. A new group-configuration PATCH without `If-Match` returns `428`; a
-retained idempotent replay may omit it.
+defines; a retained idempotent replay may omit it, as
+[choosing the status](errors.html#Choosing-the-status) describes.
 Requires `resources.groups.config_patch`; without it the request
 returns `404 capability_not_supported`. A group patch is a configuration
 write, so `config_patch` is true only when `resources.config.writable` is.
-Because `config_revision` is configuration-wide, a patch sent after an
-unrelated accepted change returns `412`. Read `GET /groups/{group_id}/config`
-again and retry with its current `ETag`.
+Because `config_revision` is configuration-wide, an unrelated accepted change
+makes an older `If-Match` fail with `412`; read `GET /groups/{group_id}/config`
+again and retry with its current `ETag`. At commit the server evaluates
+`If-Match` again: a mismatch returns `412`, and an intervening change that
+`If-Match` still matches returns `409`, as for a
+[source replacement](configuration.html#Validation-and-commit).
 
 {% api_example patchGroupConfig request tolerance http %}
 
@@ -177,9 +180,9 @@ as a `comment`, are ignored ([RFC 6902 §4](https://www.rfc-editor.org/rfc/rfc69
 |--------|---------|
 | 200 | Configuration was applied; the body is the updated configuration document and `ETag` its new revision. |
 | 202 | The update was accepted and returns the shared `group_update` operation summary. |
-| 412 | `If-Match` does not match the current configuration-wide `config_revision`. |
+| 412 | `If-Match` does not match the current configuration-wide `config_revision`, on arrival or at commit. |
 | 404 | The group does not exist, or `resources.groups.config_patch` is false. |
-| 409 | A `test` operation failed, or current runtime state prevents the requested transition. |
+| 409 | A `test` operation failed, current runtime state prevents the requested transition, or the configuration changed before the commit while `If-Match` still matched. |
 | 422 | The patch is syntactically valid but the field or value is unsupported. |
 | 428 | A new patch has no `If-Match`. |
 

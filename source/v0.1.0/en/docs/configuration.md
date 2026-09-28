@@ -147,8 +147,7 @@ The server refuses the following changes before storing anything:
 After validation, the server commits the replacement atomically, either before
 activation or after the new generation becomes active: store readers see the
 old bytes or the new bytes, never a mix. Concurrent API writes serialize the
-hash check, validation, and commit. At commit, a changed stored hash causes
-`412`. The server starts a reload operation with `kind: reload`; on failure,
+hash check, validation, and commit. The server then starts a reload operation with `kind: reload`; on failure,
 `written` reports whether the store holds the replacement. The operation
 succeeds only after both the commit and the activation finish; a `202` means
 the server accepted the replacement, not that it is stored.
@@ -158,9 +157,16 @@ renaming it over the source, preserving the file mode.
 
 Each write activates the candidate it validated. The next configuration write
 waits until the previous activation finishes; a server that does not queue
-writes returns `409 state_conflict` instead. An edit made to the store outside
-the API before the commit makes the commit fail with `412`. An edit made after
-the commit is not part of this activation; it takes effect at a later reload.
+writes returns `409 state_conflict` instead. An edit made after the commit is
+not part of this activation; it takes effect at a later reload.
+
+The stored source can change before the commit if it is edited outside the
+API. At commit the server evaluates the request's `If-Match` again against the
+stored hash. If the condition no longer matches, the commit fails
+with `412 stale_revision`. If the stored hash changed but the condition still
+matches, as `*` or a list containing the new hash does, the commit fails with
+`409 state_conflict`, because the validated candidate is stale. Either way the
+replacement is not stored.
 
 {% api_example replaceConfigSource 202 queued http %}
 
@@ -175,8 +181,8 @@ replacement before retrying.
 |-----------------|--------------------|
 | `403 permission_denied` | Missing `control`, disabled server-wide editing, a read-only source, a replacement that sets or changes API listener settings or secrets, or, in a file store, a source path that is no longer a regular file. Do not offer writes for that source. |
 | `404 resource_not_found` | Unknown source ID. Refetch the accepted source set. |
-| `409 state_conflict` | Another configuration write is still activating and this server does not queue writes; nothing is stored. Retry after it finishes. |
-| `412 stale_revision` | The stored content hash differs from `If-Match`; the server stores nothing. Reconcile the changed source before retrying. Refetching the accepted snapshot alone may still return the old hash. |
+| `409 state_conflict` | Another configuration write is still activating and this server does not queue writes, or the stored source changed before the commit while `If-Match` still matched it; nothing is stored. Retry after the write finishes, or reconcile the changed source. |
+| `412 stale_revision` | `If-Match` does not match the stored content hash, on arrival or [at commit](#Validation-and-commit); the server stores nothing. Reconcile the changed source before retrying. Refetching the accepted snapshot alone may still return the old hash. |
 | `422 unsupported_value` | Full validation found error diagnostics, including `restart-required`; the server stores nothing and starts no reload. Display diagnostics and correct the candidate. |
 | `428 precondition_required` | `If-Match` is missing; the server writes nothing. Supply the retained source hash. |
 

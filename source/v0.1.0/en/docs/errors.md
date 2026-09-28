@@ -33,7 +33,7 @@ for a failed configuration change listed under
 | 404 | `resource_not_found` | The requested resource does not exist. |
 | 404 | `capability_not_supported` | The running engine does not expose the resource or action. |
 | 405 | `method_not_allowed` | The path exists, but not with this method ([RFC 9110 §15.5.6](https://www.rfc-editor.org/rfc/rfc9110#section-15.5.6)); the response lists the supported methods in `Allow`. An unknown path is `404`. |
-| 409 | `state_conflict` | The request is supported, but the current state prevents it: a name already in use, a referenced object that is not current, a transition the current state does not allow, or a configuration change while a write without `If-Match` was being admitted. The same request can succeed after the state changes. |
+| 409 | `state_conflict` | The request is supported, but the current state prevents it: a name already in use, a referenced object that is not current, a transition the current state does not allow, a configuration change while a write without `If-Match` was being admitted, or a change between validation and a conditional write's commit that its `If-Match` still matches. The same request can succeed after the state changes. |
 | 409 | `idempotency_conflict` | An idempotency key was reused with a different request body. |
 | 409 | `event_cursor_expired` | Event or log SSE cursor cannot be replayed; open a fresh stream and establish a new baseline. |
 | 409 | `setup_required` | Password login was requested before an administrator was created. |
@@ -108,7 +108,10 @@ The server evaluates `If-Match` as
 defines. `*` matches when the resource exists. A comma-separated list matches
 when any strong tag in it equals the current one. A weak tag (`W/"…"`) never
 matches. A header that does not match returns `412 stale_revision`; a header
-that is not `*` or a list of entity tags returns `400 invalid_request`.
+that is not `*` or a list of entity tags returns `400 invalid_request`. The
+server evaluates the condition again when it commits the write; a change that
+the condition still matches then returns `409`, as
+[validation and commit](configuration.html#Validation-and-commit) defines.
 
 The server checks the request in the order under
 [choosing the status](#Choosing-the-status): body parsing and schema checks come

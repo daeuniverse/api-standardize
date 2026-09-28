@@ -642,8 +642,8 @@ paths:
         A change to a field absent from mutable_config, such as
         interrupt_connections on an engine without that option, returns 422
         unsupported_value. Requires resources.groups.config_patch. If-Match carries the
-        configuration-wide revision from the ETag of GET, so an accepted change
-        anywhere in the configuration makes an older revision fail with 412.
+        configuration-wide revision from the ETag of GET; see
+        [Groups](/v0.1.0/en/docs/groups.html) for 412 and 409.
       x-permission: control
       security:
         - bearerAuth: []
@@ -731,7 +731,7 @@ paths:
         "409":
           $ref: ./openapi.yaml#/components/responses/Conflict
         "412":
-          description: If-Match does not equal the current configuration revision
+          description: If-Match does not match the current configuration revision, on arrival or at commit
           headers:
             Cache-Control:
               $ref: ./openapi.yaml#/components/headers/NoStore

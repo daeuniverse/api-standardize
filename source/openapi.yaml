@@ -1407,9 +1407,7 @@ paths:
             The source's content_sha256, from GET /config or the ETag of
             GET /config/sources/{source_id}, enclosed in double quotes. The server
             compares it with the source's current bytes in the configuration store,
-            not the snapshot revision, as RFC 9110 §13.1.1 defines: `*` matches the
-            existing source, a list matches when any strong tag in it matches, and a
-            weak tag never matches.
+            not the snapshot revision, as [Conditional requests](/v0.1.0/en/docs/errors.html#Conditional-requests) defines.
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
@@ -1514,7 +1512,7 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
         '412':
-          description: If-Match does not match the stored content hash; nothing is stored
+          description: If-Match does not match the stored content hash, on arrival or at commit; the replacement is not stored
           headers:
             Cache-Control:
               $ref: '#/components/headers/NoStore'
@@ -3596,8 +3594,8 @@ paths:
         A change to a field absent from mutable_config, such as
         interrupt_connections on an engine without that option, returns 422
         unsupported_value. Requires resources.groups.config_patch. If-Match carries the
-        configuration-wide revision from the ETag of GET, so an accepted change
-        anywhere in the configuration makes an older revision fail with 412.
+        configuration-wide revision from the ETag of GET; see
+        [Groups](/v0.1.0/en/docs/groups.html) for 412 and 409.
       x-permission: control
       security:
         - bearerAuth: []
@@ -3685,7 +3683,7 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
         '412':
-          description: If-Match does not equal the current configuration revision
+          description: If-Match does not match the current configuration revision, on arrival or at commit
           headers:
             Cache-Control:
               $ref: '#/components/headers/NoStore'
@@ -5169,10 +5167,8 @@ paths:
         - Events
       summary: Follow bounded resumable invalidation events
       description: |
-        Send stream.ready first on every connection, including a valid resume.
-        Its cursor must not skip pending replay; retain the supplied Last-Event-ID
-        until replay advances it. Filtered-out IDs may leave gaps, so clients must
-        not infer loss by subtracting IDs.
+        Every connection begins with stream.ready; a resumed connection then replays
+        retained events after Last-Event-ID; see [Replay and recovery](/v0.1.0/en/docs/events.html#Replay-and-recovery).
       x-permission: observe
       security:
         - bearerAuth: []
@@ -6730,14 +6726,10 @@ components:
       name: cursor
       in: query
       description: |
-        Opaque cursor from the previous page's next_cursor, bound to the running
-        instance, the endpoint and resource it pages, the retained snapshot or
-        record, the filters and limit. A cursor the server no longer recognises
-        (snapshot expired or evicted, record left the ring, process restarted,
-        never issued, or issued for another endpoint or resource) returns
-        410 snapshot_expired; discard it and restart the walk without a cursor. A recognised cursor sent
-        with different filters or a different limit returns 400 invalid_request.
-        The server never continues a walk against a different snapshot.
+        Opaque cursor from the previous page's next_cursor, bound to the walk that
+        issued it (its snapshot or retained records, filters and limit). An unrecognised
+        cursor returns 410 snapshot_expired; see
+        [Page cursors](/v0.1.0/en/docs/errors.html#Page-cursors).
       schema:
         type: string
         minLength: 1
@@ -6792,7 +6784,7 @@ components:
     IfMatchOptional:
       name: If-Match
       in: header
-      description: Evaluated as RFC 9110 §13.1.1 defines; see Conditional requests in the error contract. A new group-configuration PATCH without If-Match returns 428 precondition_required; a retained idempotent replay may omit it.
+      description: Evaluated as RFC 9110 §13.1.1 defines; see Conditional requests in the error contract. For when a retained idempotent replay may omit it, see [Choosing the status](/v0.1.0/en/docs/errors.html#Choosing-the-status).
       schema:
         $ref: '#/components/schemas/EntityTagList'
       example: '"17"'
