@@ -980,6 +980,19 @@ test("connection closing documents 503 and bulk close reports what it already cl
   }
 });
 
+test("node stream transport is optional, nullable, and open to future strings", () => {
+  const response = example("listNodes:200:nodes");
+  const node = response.body.nodes[0];
+  for (const transport of [null, "tcp", "ws", "grpc", "xhttp", "future-stream"]) {
+    node.stream_transport = transport;
+    assertValid(validateExample(contract, response), `stream_transport=${transport}`);
+  }
+  delete node.stream_transport;
+  assertValid(validateExample(contract, response));
+  node.stream_transport = 42;
+  assertInvalid(validateExample(contract, response), "stream_transport accepted a JSON number");
+});
+
 test("the Location of a created node can be read back", () => {
   const created = example("createNode:201:created");
   const read = example("getNode:200:node");

@@ -38,6 +38,7 @@ Cursors follow the [paging rule](errors.html#Page-cursors). If the server cannot
 | nodes[].id | string | Opaque stable node identifier. |
 | nodes[].name | string | Engine-visible node name. |
 | nodes[].protocol | string or null | Protocol label when safely available. |
+| nodes[].stream_transport | string or null, optional | Configured stream transport, such as `tcp`, `ws`, `grpc` or `xhttp`; omitted or null when unavailable or inapplicable. Accept future string values. This is not the negotiated transport or the `tcp`/`udp` health dimension. |
 | nodes[].subscription_tag | string or null | Current subscription provenance, using the engine's `subtag(...)` name; null for manual nodes or unavailable provenance. |
 | nodes[].provider_id | string or null, optional | Identity from [providers](providers.html), for grouping nodes. Omitted or null when provenance is unavailable; never infer it from names or URLs. |
 | nodes[].group_ids | array | Direct group memberships. |
