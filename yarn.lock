@@ -46,10 +46,10 @@
   resolved "https://registry.yarnpkg.com/@csstools/css-tokenizer/-/css-tokenizer-3.0.4.tgz#333fedabc3fd1a8e5d0100013731cf19e6a8c5d3"
   integrity sha512-Vd/9EVDiu6PPJt9yAh6roZP6El1xHrdvIVGjyBsHR0RYwNHgL7FJPyIIW4fANJNG6FtyZfvlRPpFI4ZM/lubvw==
 
-"@redocly/cli@2.72.1":
-  version "2.72.1"
-  resolved "https://registry.yarnpkg.com/@redocly/cli/-/cli-2.72.1.tgz#a327e9b927d413bfb90fda01f379c6e0b66a941b"
-  integrity sha512-eARHR2ZsqIlrnV4mcKA+CK3ptV0u2d74xOhNQMlrmixMEbV4RfrnAdwNyIcGhO+3A6B3YzzG6nj5kZRKKCiGLw==
+"@redocly/cli@2.76.0":
+  version "2.76.0"
+  resolved "https://registry.yarnpkg.com/@redocly/cli/-/cli-2.76.0.tgz#2e1880cce947151a51d28c635070b5cfafd35533"
+  integrity sha512-o967iiLTq4B9oPDBqclurfLn3HOhQvYNwJ+BEkZoW/p5PwIycqIoaNv+Q+Uabb4cH/XnSyo646tCAscnjzZ6Ig==
 
 "@types/trusted-types@^2.0.7":
   version "2.0.7"
