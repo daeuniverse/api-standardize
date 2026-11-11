@@ -367,10 +367,14 @@ test("geodata sources are patched through runtime settings and reported with the
   assertValid(validateExample(contract, autoUpdate));
   assert.deepEqual(Object.keys(autoUpdate.body.geodata), ["auto_update"], "auto_update is patchable on its own");
   assert.deepEqual(example("getRuntimeSettings:200:config_sources").body.geodata.auto_update,
-    autoUpdate.body.geodata.auto_update);
+    {...autoUpdate.body.geodata.auto_update, cron: null}, "an interval schedule reads cron as null");
+  const cronUpdate = example("patchRuntimeSettings:request:geodata_auto_update_cron");
+  assertValid(validateExample(contract, cronUpdate));
+  assert.deepEqual(Object.keys(cronUpdate.body.geodata.auto_update), ["cron"], "cron is patchable on its own");
+  assert.ok(!spec.components.schemas.GeoDataAutoUpdate.required.includes("cron"), "an engine without cron schedules omits cron");
   const autoDefaults = spec.components.schemas.GeoDataAutoUpdate.properties;
   assert.deepEqual(example("getRuntimeSettings:200:current").body.geodata.auto_update,
-    {enabled: autoDefaults.enabled.default, interval_hours: bounds.default},
+    {enabled: autoDefaults.enabled.default, interval_hours: bounds.default, cron: "0 3 * * *"},
     "the built-in settings show the defaults");
   assert.equal(autoDefaults.enabled.default, true, "automatic updates are on by default");
   const downloadDefault = spec.components.schemas.GeoDataSettings.properties.download.default;
@@ -387,6 +391,8 @@ test("geodata sources are patched through runtime settings and reported with the
     [{geosite: {urls: ["https://mirror.example.net/geosite.dat#x"]}}, "URLs carry no fragment"],
     [{auto_update: {interval_hours: 0}}, "the interval is at least 1 hour"],
     [{auto_update: {}}, "an empty auto_update is rejected"],
+    [{auto_update: {cron: ""}}, "a cron expression is not empty"],
+    [{auto_update: {interval_hours: 24, cron: "0 3 * * *"}}, "a patch names one schedule"],
     [{download: {route: "group"}}, "route group names its group"],
     [{download: {route: "direct", group_id: "group-proxy"}}, "only route group takes a group_id"],
     [{download: {route: "proxy"}}, "the route is routing, group or direct"],

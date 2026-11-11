@@ -327,6 +327,7 @@ schemas:
   GeoDataAutoUpdate:
     type: object
     required: [ enabled, interval_hours ]
+    description: When the engine takes file values (resources.geodata.lifecycle.file_values), a schedule the configuration file names replaces a stored one, and a schedule an earlier file set returns to the default when the file names none; a patched schedule is kept.
     properties:
       enabled:
         type: boolean
@@ -335,7 +336,12 @@ schemas:
       interval_hours:
         type: integer
         minimum: 1
-        description: Hours between automatic updates, within resources.geodata.interval_hours, whose default applies when nothing is set. The engine may add a random delay; next_check_at reports the result.
+        description: Hours between automatic updates, within resources.geodata.interval_hours, when cron is null or absent. Under a cron schedule it reads resources.geodata.interval_hours.default and has no effect. The engine may add a random delay; next_check_at reports the result.
+      cron:
+        type:
+          - string
+          - 'null'
+        description: Five-field cron expression (minute hour day-of-month month day-of-week) evaluated in the engine's local time zone, or null when interval_hours applies. An engine without cron schedules omits it, and interval_hours then applies. The engine chooses the default and may add a random delay; next_check_at reports the result. An engine may accept fewer expressions than standard cron and refuses the rest with 400.
   GeoDataDownloadRoute:
     type: string
     enum: [ routing, group, direct ]
@@ -389,7 +395,7 @@ schemas:
         description: The route every geodata request takes. routing when nothing is stored, as for every download the engine makes itself. When the engine takes file values (resources.geodata.lifecycle.file_values), a route the configuration file names replaces a stored one, and a route an earlier file set returns to routing when the file names none; a patched route is kept. It does not affect source. A group that has no usable member when an update runs, for example just after startup before its health checks finish, fails that URL like a connection error; the engine tries the next URL and reports last_error, and never falls back to direct.
       verify_checksum:
         type: boolean
-        description: Whether an update verifies each file by the resources.geodata.checksum method and rejects a file that does not match. true when nothing is set, and an engine that omits the field behaves as true. false sends no checksum request and accepts the file unverified, with verified false, for a mirror that answers the checksum URL with an error page or a status other than 404.
+        description: Whether an update verifies each file by the resources.geodata.checksum method and rejects a file that does not match. true when nothing is set, and an engine that omits the field behaves as true. false sends no checksum request and accepts the file unverified, with verified false, for a mirror that answers the checksum URL with an error page or a status other than 404. When the engine takes file values, a value the configuration file names replaces a stored one, and a value an earlier file set returns to true when the file names none; a patched value is kept.
   GeoDataSourcesPatch:
     type: object
     additionalProperties: false
@@ -428,7 +434,16 @@ schemas:
               interval_hours:
                 type: integer
                 minimum: 1
-                description: Within resources.geodata.interval_hours; a value outside it returns 400.
+                description: Within resources.geodata.interval_hours; a value outside it returns 400. Switches to the interval schedule.
+              cron:
+                type: string
+                minLength: 1
+                description: Switches to the cron schedule. Five fields, as in GeoDataAutoUpdate.cron. An expression the engine refuses, for example one it cannot parse, one it limits or one that never fires, returns 400.
+            not:
+              required: [ interval_hours, cron ]
+              properties:
+                interval_hours: {}
+                cron: {}
   GeoDataUpdateAccepted:
     allOf:
       - $ref: ./openapi.yaml#/components/schemas/OperationAccepted

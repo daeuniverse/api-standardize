@@ -50,7 +50,7 @@ paths:
                         urls:
                           - https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/release/geoip.dat
                           - https://fastly.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/geoip.dat
-                      auto_update: { enabled: true, interval_hours: 24 }
+                      auto_update: { enabled: true, interval_hours: 24, cron: '0 3 * * *' }
                       download: { route: routing, group_id: null }
                       verify_checksum: true
                   x-headers:
@@ -71,7 +71,7 @@ paths:
                         urls: [ https://mirror.example.net/geodata/geosite.dat ]
                       geoip:
                         urls: [ https://mirror.example.net/geodata/geoip.dat ]
-                      auto_update: { enabled: true, interval_hours: 48 }
+                      auto_update: { enabled: true, interval_hours: 48, cron: null }
                       download: { route: group, group_id: group-proxy }
                       verify_checksum: true
                   x-headers:
@@ -124,10 +124,11 @@ paths:
         are each overridden on their own; null removes every override and every
         value taken from the configuration file, so the built-in sources and
         defaults apply until the engine next takes file values. When it takes file
-        values, a URL list or download route the configuration file names replaces
-        the override for that field. Geodata URLs are fetched under the
-        outbound-request policy in api-config. More URLs than resources.geodata.max_urls or an interval outside
-        resources.geodata.interval_hours returns 400. A patch never downloads; POST
+        values, a URL list, download route, schedule or checksum switch the
+        configuration file names replaces the override for that field. Geodata URLs are fetched under the
+        outbound-request policy in api-config. More URLs than resources.geodata.max_urls, an interval outside
+        resources.geodata.interval_hours, interval_hours together with cron, or a
+        cron expression the engine refuses returns 400. A patch never downloads; POST
         /geodata/update does. A download with route group whose group_id is not a
         current group returns 409 state_conflict and changes nothing.
       x-permission: control
@@ -166,6 +167,11 @@ paths:
                 value:
                   geodata:
                     auto_update: { enabled: true, interval_hours: 48 }
+              geodata_auto_update_cron:
+                summary: Update at 04:30 local time on weekdays
+                value:
+                  geodata:
+                    auto_update: { cron: '30 4 * * 1-5' }
               geodata_download:
                 summary: Download geodata through a group
                 value:
@@ -221,7 +227,7 @@ paths:
                         urls:
                           - https://fastly.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/geoip.dat
                           - https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/release/geoip.dat
-                      auto_update: { enabled: true, interval_hours: 24 }
+                      auto_update: { enabled: true, interval_hours: 24, cron: '0 3 * * *' }
                       download: { route: routing, group_id: null }
                       verify_checksum: true
                   x-headers:

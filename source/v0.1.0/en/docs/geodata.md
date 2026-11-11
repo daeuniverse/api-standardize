@@ -138,7 +138,8 @@ automatic updates are the `geodata` section of
 |-------|---------|
 | geosite.urls, geoip.urls | Up to `resources.geodata.max_urls` URLs per asset, in fallback order, each at most 4096 bytes with no userinfo or fragment. |
 | auto_update.enabled | Update on a schedule. On by default. |
-| auto_update.interval_hours | Hours between automatic updates, within `resources.geodata.interval_hours`, which also gives the default. |
+| auto_update.interval_hours | Hours between automatic updates, within `resources.geodata.interval_hours`, when `cron` is null or absent. Under a cron schedule it reads the advertised default and has no effect. |
+| auto_update.cron | Five-field cron expression (minute, hour, day of month, month, day of week) in the engine's local time zone, or null when the interval applies. An engine without cron schedules omits it. |
 | source | Read-only: where the effective URL lists came from, `config`, `override` or `default`. |
 | download.route | How downloads leave the device: `routing` (default), `group` or `direct`. |
 | download.group_id | The group for `route: group`, as in `GET /groups`; null otherwise. |
@@ -197,8 +198,9 @@ A patch may set URLs under any `source`. Setting `geosite` or `geoip` overrides
 only that asset's list, so `source` becomes `override`; the other list keeps
 its value and where it came from. A `urls` list replaces the whole list.
 `auto_update`, `download` and `verify_checksum` are each overridden on their
-own and never change `source`. More URLs than `max_urls` or an interval
-outside `interval_hours` returns `400 invalid_request`.
+own and never change `source`. More URLs than `max_urls`, an interval
+outside `interval_hours`, `interval_hours` together with `cron`, or a `cron`
+expression the engine refuses returns `400 invalid_request`.
 Plain `http` URLs are accepted, but a file fetched without a published checksum
 is unverified, so prefer `https`. Changing `geodata` requires `control` and a
 credential; an anonymous loopback caller gets `403 permission_denied`. A patch
@@ -217,6 +219,12 @@ Prefer a mirror that publishes checksums.
 {% api_example patchRuntimeSettings 200 geodata_stored %}
 
 {% api_request patchRuntimeSettings geodata_auto_update %}
+
+`interval_hours` switches to the interval schedule and `cron` to the cron
+schedule; `enabled` alone keeps the current one. The engine chooses the default
+schedule, and may accept fewer expressions than standard cron.
+
+{% api_request patchRuntimeSettings geodata_auto_update_cron %}
 
 {% api_request patchRuntimeSettings geodata_reset %}
 
@@ -247,19 +255,23 @@ connection error, the engine tries the next URL, and when all fail it reports
 `last_error`. It never switches to direct on its own, so a download meant for a
 proxy is not sent in the clear.
 
-Automatic updates are on by default, at the advertised default interval, so the
+Automatic updates are on by default, on the engine's default schedule, so the
 loaded files follow the upstream lists without a manual update. Set
 `auto_update.enabled` to false to stop them.
 
-The next automatic attempt is due a wait plus a random delay after the last
-attempt, manual or automatic, finished. Until this process finishes its first
+Under an interval schedule, the next automatic attempt is due a wait plus a
+random delay after the last attempt, manual or automatic, finished. Under a
+cron schedule it is due at the first time the expression names after the last
+recorded attempt, plus the random delay; after a restart the schedule continues
+from that record. Until this process finishes its first
 attempt, the wait counts from process start or from the latest change to
 `auto_update`, whichever is later, so a start never downloads at once. The wait
-is the interval; after a failed attempt the engine may wait less, never more,
-and a success restores the interval. The engine bounds the random delay, which
-spreads downloads from many devices, and adds it to every wait, retries
-included. `next_check_at` reports the due time with the delay, so a retry is due
-no later than the interval plus the delay. Changing `auto_update` recomputes the
+is the interval, or the time to the next cron fire; after a failed attempt the
+engine may wait less, never more, and a success restores the schedule. The
+engine bounds the random delay, which spreads downloads from many devices, and
+adds it to every wait, retries included. `next_check_at` reports the due time
+with the delay, so a retry is due no later than the interval or the next cron
+fire, plus the delay. Changing `auto_update` recomputes the
 due time from the last finished attempt, or from the time of the change when
 there is none yet. honk's delay and backoff values are in the [honk
 notes](honk-notes.html#Geodata-sources-in-honk).

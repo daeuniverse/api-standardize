@@ -1122,7 +1122,7 @@ schemas:
                 type: object
                 additionalProperties: false
                 required: [ min, max, default ]
-                description: Bounds and default of geodata auto_update.interval_hours. Required when configurable_sources is true. min <= default <= max is required; JSON Schema cannot express this ordering, so validators check it separately.
+                description: Bounds of geodata auto_update.interval_hours, and the nominal value it reads under a cron schedule. Required when configurable_sources is true. min <= default <= max is required; JSON Schema cannot express this ordering, so validators check it separately.
                 properties:
                   min:
                     type: integer

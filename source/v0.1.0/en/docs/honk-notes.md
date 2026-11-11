@@ -36,8 +36,8 @@ This section records how honk implements the
 `feat/native-api` branch; another engine may reach the same effective values
 another way.
 
-- honk's configuration file can name the URL lists and the download route,
-  but not `auto_update` or `verify_checksum`.
+- honk's configuration file can name the URL lists, the download route, and,
+  in `assets.geodata`, `auto_update`, `cron` and `checksum`.
 - honk keeps the geodata settings in its state database. Each stored URL list
   and the download route carry a mark saying whether the configuration file
   wrote them.
@@ -45,7 +45,10 @@ another way.
   `geosite_download_url`, `geoip_download_url` and `geodata_download_detour`
   from the configuration file over the stored values. A list or route an
   earlier file wrote and the file no longer names is deleted, so the built-in
-  value applies; a patched one is kept.
+  value applies; a patched one is kept. `auto_update`, `cron` and `checksum`
+  are written the same way. Naming only one of `auto_update` and `cron` takes
+  the default for the other, and a value an earlier file wrote returns to its
+  default once the file names neither.
 - `source` is `config` while every stored list carries the file mark, `db`
   once a stored list does not, and `default` when no list is stored. A planned
   honk change renames `db` to `override`.
@@ -62,7 +65,16 @@ another way.
   the first, at process start or the latest `auto_update` change, plus the wait
   and a random delay of up to 60 minutes. After a failed attempt, the wait
   starts at one hour, doubles after each further failure, and is capped at the
-  configured interval.
+  configured interval, or at the next cron fire under a cron schedule.
+- honk's default schedule is cron `0 3 * * *`, daily at 03:00 local time. A
+  cron schedule reads `interval_hours` as the advertised default, 24, and an
+  interval schedule reads `cron` as null. Under a cron schedule the first check
+  runs five minutes plus the random delay after startup if a time the
+  expression names has passed since the last recorded check.
+- honk accepts numbers, `*`, lists, ranges and steps in cron fields, day of
+  week 0 and 7 as Sunday, and refuses names, macros such as `@daily`, a seconds
+  field, an expression that fires more than four times a day, and one that
+  never fires, with `400`.
 
 ## Runtime settings in honk
 
